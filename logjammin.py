@@ -216,7 +216,7 @@ class LogJammin:
 
     def parse_time_log_line(self, line):
         ticket_match_re = r'(?P<ticket>[A-Z][A-Z0-9]+-\d+)'
-        dec_hours_re = r'(?P<dec_hours>\d+(\.\d+)?)H?'
+        dec_hours_re = r'(?P<dec_hours>\d*(\.\d+)?)H?'
         hours_mins_re = r'((?P<hours>\d+)H)?((?P<minutes>\d+)M)?'
 
         log = re.match(r'^' + ticket_match_re + r',(' + hours_mins_re + r'|' + dec_hours_re + ')$', line)
