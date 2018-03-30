@@ -8,6 +8,7 @@ from os.path import expanduser
 from datetime import datetime
 from pytz import timezone
 from jira import JIRA
+from collections import OrderedDict
 
 
 class LogJammin:
@@ -71,7 +72,7 @@ class LogJammin:
         self.exit_with_success()
 
     def print_summary(self):
-        logs_by_date = {}
+        logs_by_date = OrderedDict()
         total_minutes = 0
         print('\033[94m{}\033[0m'.format(80 * '='))
         print('\033[93mSummary:\033[0m')
@@ -85,6 +86,7 @@ class LogJammin:
             logs_by_date[date]['logs'].append(log)
             logs_by_date[date]['total_time_minutes'] += 60 * log['time']['hours']
             logs_by_date[date]['total_time_minutes'] += log['time']['minutes']
+
         for date, summary in logs_by_date.items():
             print('\n\033[93m{}\033[0m'.format(date))
             hours = math.floor(summary['total_time_minutes'] / 60)
