@@ -39,7 +39,7 @@ The general format of the time log file is as follows:
 ```
 YYYY-MM-DD
 TICKET-123, 90m
-TICKET-456, 1h 30m
+TICKET-456, 1h 30m, added new feature
 
 YYYY-MM-DD
 TICKET-789, 1.5h
