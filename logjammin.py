@@ -93,7 +93,9 @@ class LogJammin:
             minutes = math.floor(summary['total_time_minutes'] % 60)
             total_minutes += summary['total_time_minutes']
             for log in summary['logs']:
-                print('  {}: {}'.format(log['ticket'], self.format_time(log['time']['hours'], log['time']['minutes'])))
+                time = self.format_time(log['time']['hours'], log['time']['minutes'])
+                description = '({})'.format(log['description']) if log['description'] else ''
+                print('  {}: {} {}'.format(log['ticket'], time, description))
             print('\033[93mTotal: {} logs, {}\033[0m'.format(len(summary['logs']), self.format_time(hours, minutes)))
 
         summary_hours = math.floor(total_minutes / 60)
@@ -116,7 +118,12 @@ class LogJammin:
         exit(1)
 
     def format_log(self, log):
-        return 'date={}, ticket={}, time={}'.format(log['date'].strftime('%Y-%m-%d'), log['ticket'], self.format_time(log['time']['hours'], log['time']['minutes']))
+        return 'date={}, ticket={}, time={}, description={}'.format(
+            log['date'].strftime('%Y-%m-%d'),
+            log['ticket'],
+            self.format_time(log['time']['hours'], log['time']['minutes']),
+            log['description']
+        )
 
     def format_time(self, hours, minutes):
         time_str = ''
@@ -141,7 +148,6 @@ class LogJammin:
     def load_logs(self, filename):
         line_no = 0
         loading_pct = 0
-        lines = []
         with open(filename, 'r') as fp:
             lines = fp.read().splitlines()
         for line in lines:
@@ -169,15 +175,17 @@ class LogJammin:
     def upload_log(self, log):
         time_spent = '{}h {}m'.format(log['time']['hours'], log['time']['minutes'])
 
+        kwargs = {'comment': log['description']} if log['description'] else {}
+
         self.jira.add_worklog(
             issue=log['ticket'],
             timeSpent=time_spent,
-            started=log['date']
+            started=log['date'],
+            **kwargs
         )
 
     def parse_line(self, line):
-        normalized_line = line.replace(' ', '').upper()
-
+        normalized_line = re.sub(r'\s+', ' ', line.strip())
         if self.mode == 'date':
             try:
                 self.current_date = self.parse_date_line(normalized_line)
@@ -186,8 +194,8 @@ class LogJammin:
                 raise Exception('String \'{}\' is invalid: {}'.format(line, str(e))) from None
         elif self.mode == 'time_log':
             try:
-                ticket, time = self.parse_time_log_line(normalized_line)
-                self.add_log(ticket, time)
+                ticket, time, description = self.parse_time_log_line(normalized_line)
+                self.add_log(ticket, time, description)
                 self.mode = 'date_or_time_log'
             except Exception as e:
                 raise Exception('String \'{}\' is invalid: {}'.format(line, e)) from None
@@ -217,29 +225,42 @@ class LogJammin:
         return date
 
     def parse_time_log_line(self, line):
-        ticket_match_re = r'(?P<ticket>[A-Z][A-Z0-9]+-\d+)'
-        dec_hours_re = r'(?P<dec_hours>\d*(\.\d+)?)H?'
-        hours_mins_re = r'((?P<hours>\d+)H)?((?P<minutes>\d+)M)?'
+        parts = line.split(',', 2)
+        ticket_str = parts[0].strip() if len(parts) else ''
+        time_str = parts[1].strip() if len(parts) > 1 else ''
+        description = parts[2].strip() if len(parts) > 2 else ''
 
-        log = re.match(r'^' + ticket_match_re + r',(' + hours_mins_re + r'|' + dec_hours_re + ')$', line)
+        ticket_match_re = r'^[A-Z][A-Z0-9]+-\d+$'
+        ticket_match = re.match(ticket_match_re, ticket_str, re.IGNORECASE)
+        if not ticket_match:
+            raise Exception('Ticket pattern not matched')
+        ticket = ticket_match.group(0).upper()
 
-        if not log:
-            raise Exception('Pattern not matched')
+        hours = 0
+        minutes = 0
 
-        if log.group('dec_hours'):
-            dec_hours = float(log.group('dec_hours'))
+        dec_hours_match_re = '^(\d+\.\d+|\.\d+|\d+)\s*H?$'
+        dec_hours_match = re.match(dec_hours_match_re, time_str, re.IGNORECASE)
+        if dec_hours_match:
+            dec_hours = float(dec_hours_match.group(1))
             hours = math.floor(dec_hours)
             minutes = math.floor(60 * (dec_hours % 1))
         else:
-            hours = int(log.group('hours') or 0)
-            minutes = int(log.group('minutes') or 0)
+            hours_mins_match_re = r'((?P<hours>\d+)\s*H)?\s*((?P<minutes>\d+)\s*M)?'
+            hours_mins_match = re.match(hours_mins_match_re, time_str, re.IGNORECASE)
+            if hours_mins_match:
+                hours = int(hours_mins_match.group('hours') or 0)
+                minutes = int(hours_mins_match.group('minutes') or 0)
 
-        ticket = log.group('ticket').upper()
+        if not hours and not minutes:
+            raise Exception('Time pattern not matched')
+
         if not self.parse_only:
             self.assert_ticket_exists(ticket)
+
         time = (hours, minutes)
 
-        return (ticket, time)
+        return (ticket, time, description)
 
     def assert_ticket_exists(self, ticket):
         if ticket in self.tickets:
@@ -250,10 +271,11 @@ class LogJammin:
         except Exception as e:
             raise Exception('Failed to get ticket info for {}'.format(ticket)) from None
 
-    def add_log(self, ticket, time):
+    def add_log(self, ticket, time, description):
         self.logs.append({
             'date': self.current_date,
             'ticket': ticket,
+            'description': description,
             'time': {
                 'hours': time[0],
                 'minutes': time[1]
