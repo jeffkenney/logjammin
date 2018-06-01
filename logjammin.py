@@ -4,7 +4,7 @@ import re
 import json
 import argparse
 import math
-from os.path import expanduser
+from os.path import expanduser, realpath
 from datetime import datetime
 from pytz import timezone
 from jira import JIRA
@@ -28,6 +28,11 @@ class LogJammin:
             config = self.load_config()
             self.time_zone = timezone(config['time_zone'])
             self.now = self.time_zone.localize(datetime.now())
+            if not filename:
+                if 'log_file' not in config or not config['log_file']:
+                    raise Exception('Log file not set')
+                filename = config['log_file']
+            filename = realpath(expanduser(filename))
         except Exception as e:
             self.exit_with_error(e)
 
@@ -283,7 +288,7 @@ class LogJammin:
         })
 
 parser = argparse.ArgumentParser()
-parser.add_argument('file', type=str, help='the file to load')
+parser.add_argument('file', type=str, help='the file to load', nargs='?')
 parser.add_argument('-p', '--parse-only', action='store_true', help='parse the file only (don\'t verify tickets or upload logs)')
 args = parser.parse_args()
 

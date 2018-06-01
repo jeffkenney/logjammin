@@ -15,12 +15,13 @@ A batch time logger for JIRA
     "time_zone": "your tzdata time zone ID (e.g. US/Pacific)"
 }
 ```
+- An optional `log_file` property can be set instead of specifying the log file via a command line argument.
 
 ## Usage:
 
 ```
 $ ./logjammin.py -h
-usage: logjammin.py [-h] [-p] file
+usage: logjammin.py [-h] [-p] [file]
 
 positional arguments:
   file              the file to load
