@@ -157,10 +157,13 @@ class LogJammin:
             lines = fp.read().splitlines()
         for line in lines:
             line_no += 1
-            if not len(line.strip()):
+            stripped_line = line.strip()
+            if not len(stripped_line):
+                continue
+            if stripped_line.startswith('//') or stripped_line.startswith('#'):
                 continue
             try:
-                self.parse_line(line)
+                self.parse_line(stripped_line)
             except Exception as e:
                 raise Exception('Error on line {}: {}'.format(line_no, str(e))) from None
             prev_loading_pct = loading_pct

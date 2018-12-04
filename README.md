@@ -42,6 +42,7 @@ YYYY-MM-DD
 TICKET-123, 90m
 TICKET-456, 1h 30m, added new feature
 
+# a comment
 YYYY-MM-DD
 TICKET-789, 1.5h
 ```
@@ -51,3 +52,4 @@ TICKET-789, 1.5h
 - Whitespace is allowed but not required, e.g. `TICKET-123,1h30m` and `TICKET-456 , 1 h 30 m` are both valid log entries.
 - Ticket IDs and time entries are case-insensitive.
 - Dates can be repeated.
+- Comments can be added by starting a line with `#` or `//`.
